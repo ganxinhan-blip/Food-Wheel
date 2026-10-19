@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hôm nay ăn gì?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EAF1EF; --surface:#FFFFFF; --ink:#173A42; --muted:#557178;
+  --lake:#1F4E5A; --jade:#5E9C8A; --lotus:#E79AB0; --lotus-soft:#F6D4DE;
+  --marigold:#F2B035; --line:#CFDDDA; --off:#9FB3B1; --head:#1F4E5A;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F2428; --surface:#163238; --ink:#E6F0EE; --muted:#9DB8B5;
+    --lake:#2E6C7A; --jade:#4E8A79; --lotus:#D9839C; --lotus-soft:#4A2E37;
+    --line:#24474E; --off:#5F7B7A; --head:#E6F0EE; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F2428; --surface:#163238; --ink:#E6F0EE; --muted:#9DB8B5;
+  --lake:#2E6C7A; --jade:#4E8A79; --lotus:#D9839C; --lotus-soft:#4A2E37;
+  --line:#24474E; --off:#5F7B7A; --head:#E6F0EE; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto;padding:28px 20px 56px}
+h1{font-size:clamp(2.4rem,9vw,3.4rem);font-weight:800;line-height:1;letter-spacing:-.02em;margin:0 0 8px;color:var(--head)}
+.clock{margin:0 0 18px;color:var(--muted);font-size:.95rem}
+
+.modes{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 -2px 6px;scrollbar-width:none}
+.modes::-webkit-scrollbar{display:none}
+.mode{flex:none;font:inherit;font-size:.88rem;font-weight:500;border:0;border-radius:999px;padding:8px 14px;
+  background:var(--surface);color:var(--ink);cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--line)}
+.mode[aria-pressed="true"]{background:var(--lake);color:#fff;box-shadow:none}
+.mode-desc{margin:4px 2px 22px;font-size:.95rem}
+.mode-desc .auto{color:var(--muted)}
+.linkish{background:none;border:0;padding:0;font:inherit;color:var(--ink);text-decoration:underline;cursor:pointer}
+
+.wheel-wrap{position:relative;width:min(100%,400px);aspect-ratio:1;margin:0 auto}
+#wheel{width:100%;height:100%;display:block;border-radius:50%;transition:transform 4.2s cubic-bezier(.12,.72,.12,1)}
+.pointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;
+  border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid var(--marigold);
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));z-index:2}
+.hub{position:absolute;inset:0;margin:auto;width:26%;height:26%;border-radius:50%;background:var(--surface);
+  border:4px solid var(--marigold);display:grid;place-items:center;font:inherit;font-weight:800;
+  font-size:clamp(.95rem,3.8vw,1.2rem);color:var(--head);cursor:pointer;padding:0}
+.hub:disabled{cursor:default;opacity:.85}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+
+.result{margin:26px 0 0;background:var(--surface);border-radius:20px;padding:20px 22px;border-left:8px solid var(--lotus);min-height:110px}
+.dish{font-size:1.6rem;font-weight:800;margin:0;line-height:1.15}
+.place{margin:6px 0 2px;font-weight:500}
+.meta{margin:0;color:var(--muted);font-size:.92rem}
+.tag{display:inline-block;margin:12px 0 0;font-size:.85rem;font-weight:700;background:var(--lotus-soft);color:var(--ink);padding:4px 12px;border-radius:999px}
+.why{margin:10px 0 0;font-size:.95rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{font:inherit;font-weight:700;border:0;border-radius:999px;padding:11px 16px;cursor:pointer;text-decoration:none;display:inline-block;font-size:.95rem}
+.btn.primary{background:var(--lake);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--line)}
+.empty{color:var(--muted);margin:0}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;display:flex;gap:14px;align-items:center;
+  max-width:calc(100% - 32px);font-size:.92rem;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1;pointer-events:auto}
+.toast button{background:none;border:0;color:var(--marigold);font:inherit;font-weight:700;cursor:pointer;padding:2px 4px}
+
+.toggle-row{margin:26px 0 10px}
+.switch{display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer}
+.switch input{width:20px;height:20px;accent-color:var(--lake)}
+
+details{margin-top:10px;background:var(--surface);border-radius:20px;padding:4px 18px}
+summary{cursor:pointer;font-weight:700;padding:14px 0}
+ul.list{list-style:none;margin:0;padding:0 0 10px}
+ul.list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+ul.list li label{flex:1;display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+ul.list input{margin-top:4px;width:18px;height:18px;accent-color:var(--jade);flex:none}
+.li-name{font-weight:500;display:block}
+.li-meta{font-size:.85rem;color:var(--muted);display:block}
+.dim .li-name{color:var(--off)}
+.small-btn{background:none;border:0;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;padding:4px 6px;border-radius:8px;text-decoration:underline}
+.group-h{font-size:.9rem;font-weight:700;color:var(--muted);margin:14px 0 2px}
+.add{display:flex;gap:8px;padding:6px 0 16px}
+.add input{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 16px}
+.setting select{font:inherit;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.note{font-size:.85rem;color:var(--muted);margin:18px 2px 0}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.lang{display:flex;flex:none;background:var(--surface);border-radius:999px;padding:3px;box-shadow:inset 0 0 0 1.5px var(--line);margin-top:6px}
+.lang button{font:inherit;font-size:.8rem;font-weight:700;border:0;background:none;color:var(--ink);padding:6px 10px;border-radius:999px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--lake);color:#fff}
+.subtitle{margin:-2px 0 6px;color:var(--muted);font-weight:500}
+.letter{border-left:6px solid var(--lotus)}
+.letter-vi{margin:4px 0 8px;font-size:1.1rem;font-weight:500;line-height:1.6}
+.letter-en{margin:0 0 18px;color:var(--muted);font-size:.95rem}
+.guide{margin:0 0 18px}
+.guide ol{margin:0;padding:0 0 12px;list-style:none;counter-reset:step}
+.guide li{counter-increment:step;display:grid;grid-template-columns:32px 1fr;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.guide li::before{content:counter(step);width:28px;height:28px;border-radius:50%;background:var(--lotus-soft);color:var(--ink);font-weight:800;display:grid;place-items:center;font-size:.9rem}
+.guide .vi{display:block;font-weight:500}
+.guide .en{display:block;font-size:.88rem;color:var(--muted);margin-top:2px}
+.guide .b{font-weight:800}
+.guide .closing{border-top:1px solid var(--line);padding:14px 0 16px;margin:0}
+@media (prefers-reduced-motion: reduce){ #wheel{transition:transform .01s} .toast{transition:none} }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>Hôm nay ăn gì?</h1>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="vi">Tiếng Việt</button>
+      <button type="button" data-lang="en">English</button>
+    </div>
+  </div>
+  <p class="subtitle" id="subtitle"></p>
+  <p class="clock" id="clock"></p>
+
+  <details class="guide">
+    <summary>Cách dùng · How to use</summary>
+    <ol>
+      <li><span><span class="vi">Bấm <span class="b">Quay!</span> để quay. Quay bao nhiêu lần cũng được.</span><span class="en">Tap Quay! to spin. Spin as many times as you like.</span></span></li>
+      <li><span><span class="vi">Vòng quay tự đổi theo giờ trong ngày: <span class="b">Trước khi live</span>, <span class="b">Đang live</span>, <span class="b">Giờ nghỉ</span>, <span class="b">Bữa tối lúc làm việc</span>, <span class="b">Trước khi ngủ</span>. Bấm nút ở trên để tự đổi.</span><span class="en">The wheel changes with your day: Before stream, On stream, Break, Desk dinner, Before sleep. Tap a button at the top to switch yourself.</span></span></li>
+      <li><span><span class="vi">Không thích món này? Bấm <span class="b">Để hôm khác</span>. Món đó sẽ ẩn đến 5 giờ sáng mai và vòng quay sẽ tự quay lại.</span><span class="en">Don’t feel like it? Tap Not today. It hides until 5am tomorrow and the wheel spins again.</span></span></li>
+      <li><span><span class="vi">Chọn món rồi? Bấm <span class="b">Gọi món này</span>. Quán đó sẽ nghỉ vài ngày để lần sau có món mới. Bấm nhầm thì bấm <span class="b">Hoàn tác</span>.</span><span class="en">Decided? Tap Ordering this. That place rests for a few days so you get something new next time. Tapped by mistake? Tap Undo.</span></span></li>
+      <li><span><span class="vi">Mở <span class="b">Sửa danh sách</span> để thêm món bạn thích hoặc tắt quán bạn không thích.</span><span class="en">Open Edit the list to add your favourites or turn off places you don’t like.</span></span></li>
+      <li><span><span class="vi">Bấm <span class="b">Tiếng Việt / English</span> ở góc trên để đổi ngôn ngữ.</span><span class="en">Tap Tiếng Việt / English at the top to switch language.</span></span></li>
+    </ol>
+    <p class="closing"><span class="vi" style="display:block;font-weight:500">Ăn một chút cũng được, miễn là đừng bỏ bữa nhé. 💛</span><span class="en" style="display:block;font-size:.88rem;color:var(--muted)">Even a little is fine. Just try not to skip meals.</span></p>
+  </details>
+
+  <div class="modes" id="modes" role="group" aria-label="Time of day"></div>
+  <p class="mode-desc" id="modeDesc"></p>
+
+  <div class="wheel-wrap">
+    <div class="pointer" aria-hidden="true"></div>
+    <canvas id="wheel" aria-label="Food wheel" role="img"></canvas>
+    <button class="hub" id="spin" type="button">Quay!</button>
+  </div>
+
+  <section class="result" id="result" aria-live="polite"></section>
+
+  <div class="toggle-row">
+    <label class="switch"><input type="checkbox" id="openOnly" checked> <span data-t="openOnly"></span></label>
+  </div>
+
+  <details>
+    <summary data-t="recent"></summary>
+    <ul class="list" id="recent"></ul>
+  </details>
+
+  <details>
+    <summary data-t="edit"></summary>
+    <div class="setting">
+      <label for="cool" data-t="coolLabel"></label>
+      <select id="cool"></select>
+    </div>
+    <div id="list"></div>
+    <div class="add">
+      <input id="newItem" type="text" maxlength="40">
+      <button class="btn primary" id="addBtn" type="button" data-t="add"></button>
+    </div>
+  </details>
+
+  <details class="letter">
+    <summary>💌 Một lời nhắn cho em · A note for you</summary>
+    <p class="letter-vi">Anh quan tâm em nhiều hơn em nghĩ đấy. Mong là cái này giúp được em, dù chỉ một chút thôi.</p>
+    <p class="letter-en">I care about you more than you know. I hope this helps you, even in a small way.</p>
+  </details>
+
+  <p class="note" data-t="note"></p>
+</main>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button type="button" id="toastUndo"></button></div>
+
+<script>
+let lang=(()=>{ try{ return localStorage.getItem("hnag2-lang")||"vi"; }catch(e){ return "vi"; } })();
+const L=x=>(x&&typeof x==="object")?x[lang]:x;
+
+const T={
+  subtitle:{vi:"",en:"What to eat today?"},
+  openOnly:{vi:"Chỉ hiện quán đang mở",en:"Only places open right now"},
+  recent:{vi:"Món ăn gần đây",en:"Recently had"},
+  edit:{vi:"Sửa danh sách",en:"Edit the list"},
+  coolLabel:{vi:"Sau khi gọi món, ẩn quán đó trong",en:"After ordering, hide a place for"},
+  add:{vi:"Thêm",en:"Add"},
+  placeholder:{vi:"Thêm món bạn thích, vd: Bún chả cô Lan",en:"Add a favourite, e.g. Bún chả cô Lan"},
+  note:{vi:"Giờ mở cửa chỉ để tham khảo và có thể thay đổi. Hầu hết các quán đều đặt được trên GrabFood hoặc ShopeeFood.",en:"Opening hours are a guide and can change. Most places can be ordered on GrabFood or ShopeeFood."},
+  empty:{vi:"Bấm <strong>Quay!</strong> để quay. Quay bao nhiêu lần cũng được.",en:"Tap <strong>Quay!</strong> to spin. Spin as many times as you like."},
+  order:{vi:"Gọi món này",en:"Ordering this"}, skip:{vi:"Để hôm khác",en:"Not today"},
+  again:{vi:"Quay lại",en:"Spin again"}, maps:{vi:"Mở bản đồ",en:"Open in Maps"}, undo:{vi:"Hoàn tác",en:"Undo"},
+  backAuto:{vi:"Quay về tự động",en:"Back to auto"},
+  ordered:{vi:"Lựa chọn tốt. Ăn từ từ và nghỉ ngơi thật sự nhé.",en:"Good choice. Eat slowly and take a real break."},
+  recentEmpty:{vi:"Chưa có gì. Bấm “Gọi món này” sau khi quay, món đó sẽ hiện ở đây.",en:"Nothing yet. Tap “Ordering this” after a spin and it shows up here."},
+  today:{vi:"Hôm nay",en:"Today"}, yesterday:{vi:"Hôm qua",en:"Yesterday"},
+  resting:{vi:", đang nghỉ",en:", resting"}, notToday:{vi:", để hôm khác",en:", not today"},
+  bring:{vi:"Hiện lại",en:"Bring back"}, remove:{vi:"Xoá",en:"Remove"},
+  anyTime:{vi:"Lúc nào cũng được",en:"Any time"}, closedToday:{vi:"Hôm nay đóng cửa",en:"Closed today"}
+};
+const tr=k=>T[k][lang];
+const daysTxt=n=>lang==="vi"?(n===7?"1 tuần":n+" ngày"):(n===7?"1 week":n+(n===1?" day":" days"));
+
+const MODES={
+  pre:{name:{vi:"Trước khi live",en:"Before stream"},time:{vi:"5–6h sáng",en:"5–6am"},desc:{vi:"Ăn nhanh, nhẹ để bắt đầu ngày mới.",en:"Quick and light to start the day."}},
+  stream:{name:{vi:"Đang live",en:"On stream"},time:{vi:"6h sáng – 1h chiều",en:"6am–1pm"},desc:{vi:"Dễ ăn trước camera: một tay, gọn gàng.",en:"Easy to eat on camera, one hand, no mess."}},
+  brk:{name:{vi:"Giờ nghỉ",en:"Break"},time:{vi:"1–4h chiều",en:"1–4pm"},desc:{vi:"Bữa chính của bạn. Món gì cũng được, cả cay và phô mai.",en:"Your main meal. Anything goes, spicy and cheesy included."}},
+  dinner:{name:{vi:"Bữa tối lúc làm việc",en:"Desk dinner"},time:{vi:"4–9h tối",en:"4–9pm"},desc:{vi:"Đủ no để tập trung, không quá bừa bộn.",en:"Filling enough to keep you focused, not too messy."}},
+  sleep:{name:{vi:"Trước khi ngủ",en:"Before sleep"},time:{vi:"Sau 9h tối",en:"After 9pm"},desc:{vi:"Nhẹ nhàng, để dễ ngủ hơn.",en:"Light and calm, so sleep comes easier."}}
+};
+const ALL=["pre","stream","brk","dinner","sleep"];
+const GROUPS={fruit:{vi:"Trái cây & sinh tố",en:"Fruit & smoothies"},spicy:{vi:"Món cay",en:"Spicy"},chinese:{vi:"Món kiểu Hoa",en:"Chinese-style"},cheesy:{vi:"Món phô mai",en:"Cheesy"},gentle:{vi:"Món nhẹ",en:"Gentle & light"},mine:{vi:"Món của bạn",en:"Your own"}};
+const TAGS={
+  hydr:{vi:"Bổ sung nước",en:"Hydrating"}, sleep:{vi:"Dễ ngủ",en:"Easy on sleep"}, vitc:{vi:"Vitamin C",en:"Vitamin C"},
+  prot:{vi:"Nhiều đạm",en:"Good protein"}, protveg:{vi:"Đạm + rau",en:"Protein + veg"}, lightfill:{vi:"Nhẹ mà no",en:"Light but filling"},
+  stream:{vi:"Hợp khi live",en:"Stream-friendly"}, treat:{vi:"Ngày tự thưởng",en:"Treat day"}, fun:{vi:"Vui khi live",en:"Fun on stream"},
+  light:{vi:"Nhẹ bụng",en:"Light on the stomach"}, mine:{vi:"Món bạn thích",en:"Your favourite"}
+};
+
+const BASE=[
+  {id:"epemdi",g:"fruit",label:{vi:"Sinh tố",en:"Smoothie"},dish:{vi:"Sinh tố / nước ép",en:"Smoothie / juice"},place:"Ép Em Đi",addr:"533 Thụy Khuê",hours:[[450,1350]],modes:["stream","brk","dinner","sleep"],tag:"hydr",why:{vi:"Live nhiều giờ liền — một ly sinh tố vừa là đồ ăn vừa là nước.",en:"Hours of talking on stream — a smoothie counts as food and water."},backup:true},
+  {id:"bos",g:"fruit",label:{vi:"Trái cây",en:"Fruit"},dish:{vi:"Trái cây cắt sẵn",en:"Cut fruit"},place:"Bơ’s Fruit",addr:"591 Thụy Khuê",hours:[[420,1290]],modes:["stream","brk","dinner","sleep"],tag:"sleep",why:{vi:"Một quả chuối hay kiwi trước khi ngủ giúp thư giãn nhẹ nhàng.",en:"Banana or kiwi before bed is a gentle way to wind down."},backup:true},
+  {id:"happy",g:"fruit",label:{vi:"Hộp trái cây",en:"Fruit box"},dish:{vi:"Hộp trái cây",en:"Fruit box"},place:"365HappyFlower Fruits",addr:"382 Bưởi",hours:[[360,1380]],modes:["stream","sleep"],tag:"vitc",why:{vi:"Cam, ổi hay kiwi — dễ ăn vặt giữa lúc trò chuyện.",en:"Oranges, guava or kiwi — easy to snack on between chats."},backup:true},
+
+  {id:"oha",g:"spicy",label:{vi:"Bún bò Huế",en:"Bún bò Huế"},dish:{vi:"Bún bò Huế",en:"Bún bò Huế (spicy beef noodles)"},place:"Bún Bò Huế O Hà",addr:"86 Võ Chí Công",hours:[[330,1320]],modes:["brk","dinner"],tag:"prot",why:{vi:"Thèm cay thì đây, nhiều thịt. Tự thêm ớt theo ý.",en:"Spicy fix with plenty of meat. Add the chilli yourself."}},
+  {id:"ohuyen",g:"spicy",label:{vi:"Bún bò O Huyền",en:"Bún bò O Huyền"},dish:{vi:"Bún bò Huế",en:"Bún bò Huế (spicy beef noodles)"},place:"Bún Bò Huế O Huyền",addr:"130 Thụy Khuê",hours:[[480,1320]],modes:["brk","dinner"],tag:"prot",why:{vi:"Cay, ấm bụng, có rau tươi ăn kèm.",en:"Spicy, warming, with fresh greens on the side."}},
+
+  {id:"bamap",g:"chinese",label:{vi:"Cơm thịt kho",en:"Braised pork rice"},dish:{vi:"Cơm thịt kho",en:"Braised pork rice"},place:"Cơm tấm Ba Mập",addr:"254B Thụy Khuê",hours:[[600,1260]],modes:["brk","dinner"],tag:"protveg",why:{vi:"Thịt kho với cơm, canh và rau. Một bữa đầy đủ khoảng 40–65k.",en:"Braised pork with rice, soup and vegetables. A proper meal for around 40–65k."}},
+  {id:"hoanglua",g:"chinese",label:{vi:"Mì vằn thắn",en:"Wonton noodles"},dish:{vi:"Mì vằn thắn",en:"Wonton noodles"},place:"Mỳ Vằn Thắn Hoàng Lừa",addr:"563 Thụy Khuê",hours:[[390,810],[1025,1250]],modes:["brk","dinner"],tag:"lightfill",why:{vi:"Mì vằn thắn với tôm. Ấm áp mà không nặng bụng.",en:"Wonton noodles with shrimp. Comforting without being heavy."}},
+  {id:"nhungky",g:"chinese",label:{vi:"Nhung Ký",en:"Nhung Ký"},dish:{vi:"Mì vằn thắn / hủ tiếu",en:"Wonton noodles / hủ tiếu"},place:"Nhung Ký Mì Gia",addr:"503 Thụy Khuê",hours:[[540,1260]],modes:["brk","dinner"],tag:"lightfill",why:{vi:"Vằn thắn, xá xíu và tôm. Rất gần nhà.",en:"Wontons, char siu and shrimp. Very close to home."}},
+  {id:"meko",g:"chinese",label:{vi:"Bánh bao",en:"Steamed buns"},dish:{vi:"Bánh bao",en:"Bánh bao (steamed buns)"},place:"Bánh bao nghệ Meko",addr:"599 Thụy Khuê",hours:[[360,1320]],modes:["stream","dinner"],tag:"stream",why:{vi:"Bánh bao mềm. Một tay, gọn gàng, không ồn.",en:"Soft steamed buns. One hand, no mess, no noise."}},
+
+  {id:"savvy",g:"cheesy",label:{vi:"Pizza",en:"Pizza"},dish:{vi:"Pizza",en:"Pizza"},place:"Savvy Artisanal",addr:"83 Trích Sài",hours:[[660,1380]],modes:["brk"],tag:"treat",why:{vi:"Thèm phô mai thì đây — hợp nhất giờ nghỉ, còn nhiều thời gian tiêu hoá trước khi ngủ.",en:"Cheesy craving answered — best at the break, with hours to digest before bed."}},
+  {id:"lupo",g:"cheesy",label:{vi:"LUPO",en:"LUPO"},dish:{vi:"Món Ý / mì Ý",en:"Italian / pasta"},place:"LUPO",addr:"179 Trích Sài",hours:[[630,1350]],closed:[1],modes:["brk"],tag:"treat",why:{vi:"Một bữa tự thưởng ấm cúng bên hồ. Đóng cửa thứ Hai.",en:"A cosy lakeside treat. Closed Mondays."}},
+  {id:"nollowa",g:"cheesy",label:{vi:"Phô mai viên",en:"Cheese balls"},dish:{vi:"Phô mai viên / tokbokki",en:"Cheese balls / tokbokki"},place:"Nollowa Chicken",addr:"152 Thụy Khuê",hours:[[600,1350]],modes:["stream","brk"],tag:"fun",why:{vi:"Phô mai viên và tokbokki — người xem chắc sẽ hỏi bạn đang ăn gì.",en:"Cheese balls and tokbokki — viewers will want to know what you’re eating."}},
+
+  {id:"nieu",g:"gentle",label:{vi:"Cháo Niêu",en:"Cháo Niêu"},dish:{vi:"Cháo",en:"Cháo (rice porridge)"},place:"Cháo Niêu",addr:"504 Thụy Khuê",hours:[[300,1410]],modes:ALL,tag:"light",why:{vi:"Mở từ 5h sáng đến khuya. Ấm và dễ ăn khi không thấy đói.",en:"Open from 5am to late. Warm and easy when appetite is low."},backup:true},
+  {id:"longnhat",g:"gentle",label:{vi:"Cháo Long Nhật",en:"Cháo Long Nhật"},dish:{vi:"Cháo dinh dưỡng",en:"Cháo (rice porridge)"},place:"Cháo Long Nhật",addr:"380 Thụy Khuê",hours:[[360,1260]],modes:["stream","dinner","sleep"],tag:"light",why:{vi:"Cháo thanh, không quá đậm.",en:"Mild, not over-seasoned porridge."}},
+  {id:"c1986",g:"gentle",label:{vi:"Cháo 1986",en:"Cháo 1986"},dish:{vi:"Cháo bò ngô",en:"Corn & beef congee"},place:"Cháo 1986",addr:"164 Võ Chí Công",hours:[[480,1320]],modes:["brk","dinner","sleep"],tag:"prot",why:{vi:"Cháo bò ngô — nhẹ nhàng mà vẫn no.",en:"Corn and beef congee — gentle but still filling."}},
+  {id:"bup",g:"gentle",label:{vi:"Bún thang",en:"Bún thang"},dish:{vi:"Bún thang / phở gà",en:"Bún thang / chicken phở"},place:"Thị Búp",addr:"541 Thụy Khuê",hours:[[360,780]],modes:["stream","brk"],tag:"light",why:{vi:"Nước dùng gà thanh, bún mềm.",en:"Light chicken broth with soft noodles."}},
+  {id:"minhthuy",g:"gentle",label:{vi:"Phở Minh Thủy",en:"Phở Minh Thủy"},dish:{vi:"Phở bò",en:"Beef phở"},place:"Phở Minh Thủy",addr:"66 Thụy Khuê",hours:[[390,810]],modes:["stream","brk"],tag:"prot",why:{vi:"Phở ngon, nước trong. Một bát nhỏ cũng được.",en:"Clean, well-loved pho. A small bowl counts."}},
+  {id:"ganbo",g:"gentle",label:{vi:"Phở Thủy",en:"Phở Thủy"},dish:{vi:"Phở bò",en:"Beef phở"},place:"Phở Gân Bò Thủy",addr:"17 Thụy Khuê",hours:[[360,810],[1020,1260]],modes:["brk","dinner"],tag:"prot",why:{vi:"Nước dùng nhẹ hơn, buổi tối mở lại.",en:"Lighter broth, and it reopens in the evening."}},
+  {id:"home",g:"gentle",label:{vi:"Sữa chua",en:"Yogurt"},dish:{vi:"Sữa chua hoặc sữa + chuối",en:"Yogurt or milk + banana"},place:{vi:"Ở nhà",en:"At home"},addr:"",hours:"always",modes:["pre","stream","sleep"],tag:"sleep",why:{vi:"Không cần gọi đồ. Ăn ít cũng được.",en:"No ordering needed. Small still counts."},backup:true}
+];
+
+/* ---------- storage ---------- */
+function load(k,d){ try{ const v=localStorage.getItem("hnag2-"+k); return v?JSON.parse(v):d; }catch(e){ return d; } }
+function store(k,v){ try{ localStorage.setItem("hnag2-"+k,JSON.stringify(v)); }catch(e){} }
+let custom=load("custom",[]), disabled=load("off",[]), skips=load("skips",{}), orders=load("orders",{}), recent=load("recent",[]);
+let coolDays=load("cool",2), manualMode=null;
+
+/* ---------- time (Hà Nội, UTC+7) ---------- */
+function hn(){ const d=new Date(Date.now()+7*3600e3); return {min:d.getUTCHours()*60+d.getUTCMinutes(), dow:d.getUTCDay()}; }
+function dayKey(){ return new Date(Date.now()+2*3600e3).toISOString().slice(0,10); } /* UTC+7 minus 5h: day resets at 5am */
+function fmt(m){
+  m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=m%60;
+  if(lang==="vi") return h+"h"+(mm?String(mm).padStart(2,"0"):"");
+  const ap=h<12?"am":"pm", h12=h%12||12; return h12+(mm?":"+String(mm).padStart(2,"0"):"")+ap;
+}
+function autoMode(){ const m=hn().min; if(m>=1260||m<300) return "sleep"; if(m<360) return "pre"; if(m<780) return "stream"; if(m<960) return "brk"; return "dinner"; }
+const mode=()=>manualMode||autoMode();
+
+function status(it){
+  if(it.hours==="always") return {open:true,text:tr("anyTime")};
+  const t=hn();
+  if(it.closed && it.closed.includes(t.dow)) return {open:false,text:tr("closedToday")};
+  for(const [a,b] of it.hours){ if(t.min>=a && t.min<b) return {open:true,text:(lang==="vi"?"Mở đến ":"Open until ")+fmt(b)}; }
+  const next=it.hours.map(r=>r[0]).find(a=>a>t.min);
+  if(next!=null) return {open:false,text:(lang==="vi"?"Đang đóng, mở lúc ":"Closed, opens ")+fmt(next)};
+  return {open:false,text:lang==="vi"?"Đang đóng, mở lúc "+fmt(it.hours[0][0])+" ngày mai":"Closed, opens "+fmt(it.hours[0][0])+" tomorrow"};
+}
+function allItems(){ return BASE.concat(custom.map(c=>({id:c.id,g:"mine",label:c.label,dish:c.label,place:{vi:"Món bạn chọn",en:"Your pick"},addr:"",hours:"always",modes:ALL,tag:"mine",why:{vi:"Món bạn tự chọn.",en:"One of your own picks."},custom:true}))); }
+const isSkipped=id=>skips[id]===dayKey();
+const isCooling=id=>orders[id] && orders[id]>Date.now();
+
+function pool(){
+  const m=mode(), only=document.getElementById("openOnly").checked;
+  let p=allItems().filter(it=>!disabled.includes(it.id) && it.modes.includes(m) && (!only||status(it).open) && !isSkipped(it.id) && !isCooling(it.id));
+  if(p.length<2){
+    const extra=allItems().filter(it=>it.backup && !disabled.includes(it.id) && (!only||status(it).open) && !p.includes(it));
+    p=p.concat(extra.slice(0,Math.max(0,3-p.length)));
+  }
+  return p;
+}
+
+/* ---------- wheel ---------- */
+const cv=document.getElementById("wheel"), ctx=cv.getContext("2d");
+const COLORS=["--lake","--lotus","--jade","--lotus-soft"];
+let current=[], rotation=0, spinning=false, shown=null;
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function draw(){
+  current=pool();
+  const dpr=window.devicePixelRatio||1, size=cv.clientWidth;
+  cv.width=size*dpr; cv.height=size*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const r=size/2; ctx.clearRect(0,0,size,size);
+  const btn=document.getElementById("spin");
+  if(!current.length){ ctx.fillStyle=css("--line"); ctx.beginPath(); ctx.arc(r,r,r,0,Math.PI*2); ctx.fill(); btn.disabled=true; return; }
+  btn.disabled=false;
+  const seg=Math.PI*2/current.length, darkSoft=css("--lotus-soft").toUpperCase()==="#4A2E37";
+  current.forEach((it,i)=>{
+    const start=-Math.PI/2+i*seg;
+    let c=COLORS[i%4]; if(current.length%4===1 && i===current.length-1 && i>0) c=COLORS[1];
+    ctx.fillStyle=css(c); ctx.beginPath(); ctx.moveTo(r,r); ctx.arc(r,r,r,start,start+seg); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle=css("--surface"); ctx.lineWidth=2; ctx.stroke();
+    ctx.save(); ctx.translate(r,r); ctx.rotate(start+seg/2);
+    ctx.fillStyle=(c==="--lotus"||(c==="--lotus-soft"&&!darkSoft))?"#173A42":(c==="--lotus-soft"?"#F6D4DE":"#FFFFFF");
+    const fs=Math.max(11,Math.min(16,size/26));
+    ctx.font=`700 ${fs}px "Be Vietnam Pro", system-ui, sans-serif`; ctx.textAlign="right"; ctx.textBaseline="middle";
+    let t=L(it.label); while(ctx.measureText(t).width>r*0.62 && t.length>3) t=t.slice(0,-2)+"…";
+    ctx.fillText(t,r-14,0); ctx.restore();
+  });
+}
+function resetRotation(){ cv.style.transition="none"; rotation=0; cv.style.transform="rotate(0deg)"; void cv.offsetWidth; cv.style.transition=""; }
+function spin(){
+  if(spinning||!current.length) return;
+  spinning=true; document.getElementById("spin").disabled=true;
+  const n=current.length, seg=360/n, i=Math.floor(Math.random()*n), jitter=(Math.random()-.5)*seg*.6;
+  const target=((-(i+.5)*seg+jitter)%360+360)%360;
+  let delta=target-(rotation%360); if(delta<0) delta+=360;
+  rotation+=1800+delta; cv.style.transform=`rotate(${rotation}deg)`;
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  setTimeout(()=>{ spinning=false; document.getElementById("spin").disabled=false; show(current[i]); }, reduce?50:4300);
+}
+
+/* ---------- result ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const where=it=>esc(L(it.place))+(it.addr?", "+esc(it.addr):"");
+function showEmpty(){ shown=null; document.getElementById("result").innerHTML=`<p class="empty">${tr("empty")}</p>`; }
+function show(it){
+  shown=it; const st=status(it);
+  const q=encodeURIComponent(L(it.place)+" "+it.addr+", Tây Hồ, Hà Nội");
+  const maps=it.addr?`<a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">${tr("maps")}</a>`:"";
+  document.getElementById("result").innerHTML=
+   `<p class="dish">${esc(L(it.dish))}</p>
+    <p class="place">${where(it)}</p>
+    <p class="meta">${esc(st.text)}</p>
+    <span class="tag">${esc(L(TAGS[it.tag]))}</span>
+    <p class="why">${esc(L(it.why))}</p>
+    <div class="actions">
+      <button class="btn primary" type="button" id="orderBtn">${tr("order")}</button>
+      <button class="btn ghost" type="button" id="skipBtn">${tr("skip")}</button>
+      <button class="btn ghost" type="button" id="againBtn">${tr("again")}</button>
+      ${maps}
+    </div>`;
+  document.getElementById("againBtn").onclick=spin;
+  document.getElementById("skipBtn").onclick=()=>{
+    const id=it.id, name=L(it.label); skips[id]=dayKey(); store("skips",skips);
+    toast(lang==="vi"?`${name} sẽ ẩn đến 5h sáng mai.`:`${name} is off the wheel until tomorrow.`,()=>{ delete skips[id]; store("skips",skips); refresh(); });
+    refresh(); setTimeout(spin,250);
+  };
+  document.getElementById("orderBtn").onclick=()=>{
+    const id=it.id, name=L(it.label), prevOrder=orders[id], prevRecent=recent.slice();
+    orders[id]=Date.now()+coolDays*86400e3; store("orders",orders);
+    recent=[{id,ts:Date.now()}].concat(recent.filter(r=>r.id!==id)).slice(0,10); store("recent",recent);
+    toast(lang==="vi"?`Chúc ngon miệng! ${name} sẽ nghỉ ${daysTxt(coolDays)}.`:`Enjoy! ${name} rests for ${daysTxt(coolDays)}.`,()=>{
+      if(prevOrder) orders[id]=prevOrder; else delete orders[id]; store("orders",orders);
+      recent=prevRecent; store("recent",recent); refresh();
+    });
+    document.getElementById("result").innerHTML=`<p class="dish">${esc(L(it.dish))}</p><p class="place">${where(it)}</p><p class="why">${tr("ordered")}</p>`;
+    refresh(false);
+  };
+}
+let toastTimer=null;
+function toast(msg,undo){
+  const t=document.getElementById("toast"); document.getElementById("toastMsg").textContent=msg;
+  const u=document.getElementById("toastUndo"); u.textContent=tr("undo"); u.onclick=()=>{ undo(); t.classList.remove("show"); };
+  t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),6000);
+}
+
+/* ---------- modes ---------- */
+function renderModes(){
+  const box=document.getElementById("modes"), m=mode(), a=autoMode(); box.innerHTML="";
+  ALL.forEach(k=>{
+    const b=document.createElement("button"); b.type="button"; b.className="mode";
+    b.setAttribute("aria-pressed",k===m?"true":"false"); b.textContent=L(MODES[k].name);
+    b.onclick=()=>{ manualMode=(k===a)?null:k; refresh(); }; box.appendChild(b);
+  });
+  const d=document.getElementById("modeDesc");
+  d.innerHTML=`${esc(L(MODES[m].desc))} `+(manualMode?`<button class="linkish" type="button" id="backAuto">${tr("backAuto")}</button>`:`<span class="auto">(${esc(L(MODES[m].time))}${lang==="vi"?", tự chọn theo giờ":", picked by the clock"})</span>`);
+  const back=document.getElementById("backAuto"); if(back) back.onclick=()=>{ manualMode=null; refresh(); };
+}
+
+/* ---------- lists ---------- */
+function renderRecent(){
+  const ul=document.getElementById("recent"), items=allItems(); ul.innerHTML="";
+  const rows=recent.map(r=>({r,it:items.find(i=>i.id===r.id)})).filter(x=>x.it);
+  if(!rows.length){ ul.innerHTML=`<li><span class="li-meta">${tr("recentEmpty")}</span></li>`; return; }
+  rows.forEach(({r,it})=>{
+    const days=Math.floor((Date.now()-r.ts)/86400e3);
+    const when=days===0?tr("today"):days===1?tr("yesterday"):(lang==="vi"?days+" ngày trước":days+" days ago");
+    const li=document.createElement("li");
+    li.innerHTML=`<label><span><span class="li-name">${esc(L(it.dish))}</span><span class="li-meta">${esc(L(it.place))} — ${when}${isCooling(it.id)?tr("resting"):""}</span></span></label>`+
+      (isCooling(it.id)?`<button class="small-btn" type="button" data-bring="${it.id}">${tr("bring")}</button>`:"");
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll("[data-bring]").forEach(b=>b.onclick=()=>{ delete orders[b.dataset.bring]; store("orders",orders); refresh(); });
+}
+function renderList(){
+  const box=document.getElementById("list"), items=allItems(); box.innerHTML="";
+  Object.keys(GROUPS).forEach(g=>{
+    const its=items.filter(i=>i.g===g); if(!its.length) return;
+    const h=document.createElement("p"); h.className="group-h"; h.textContent=L(GROUPS[g]); box.appendChild(h);
+    const ul=document.createElement("ul"); ul.className="list";
+    its.forEach(it=>{
+      const st=status(it), off=disabled.includes(it.id), extra=isSkipped(it.id)?tr("notToday"):isCooling(it.id)?tr("resting"):"";
+      const li=document.createElement("li"); if(off||!st.open) li.className="dim";
+      li.innerHTML=`<label><input type="checkbox" ${off?"":"checked"} data-id="${it.id}">
+        <span><span class="li-name">${esc(L(it.dish))}</span><span class="li-meta">${where(it)} — ${esc(st.text)}${extra}</span></span></label>`+
+        (it.custom?`<button class="small-btn" type="button" data-rm="${it.id}">${tr("remove")}</button>`:"");
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  });
+  box.querySelectorAll("input[data-id]").forEach(cb=>cb.onchange=()=>{ const id=cb.dataset.id; disabled=cb.checked?disabled.filter(x=>x!==id):[...disabled,id]; store("off",disabled); refresh(); });
+  box.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ custom=custom.filter(c=>c.id!==b.dataset.rm); store("custom",custom); refresh(); });
+}
+function updateClock(){
+  const c=pool().length, t=fmt(hn().min);
+  document.getElementById("clock").textContent=lang==="vi"?`Bây giờ là ${t} ở Hà Nội. Có ${c} lựa chọn trên vòng quay.`:`It’s ${t} in Hà Nội. ${c} option${c===1?"":"s"} on the wheel.`;
+}
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===lang?"true":"false"));
+  document.querySelectorAll("[data-t]").forEach(el=>el.textContent=tr(el.dataset.t));
+  document.getElementById("subtitle").textContent=tr("subtitle");
+  document.getElementById("subtitle").style.display=lang==="en"?"":"none";
+  document.getElementById("newItem").placeholder=tr("placeholder");
+  const sel=document.getElementById("cool"); sel.innerHTML=[1,2,3,5,7].map(n=>`<option value="${n}">${daysTxt(n)}</option>`).join(""); sel.value=String(coolDays);
+  document.getElementById("toastUndo").textContent=tr("undo");
+}
+function refresh(clearResult=true){
+  const k=dayKey(); Object.keys(skips).forEach(id=>{ if(skips[id]!==k) delete skips[id]; }); store("skips",skips);
+  Object.keys(orders).forEach(id=>{ if(orders[id]<=Date.now()) delete orders[id]; }); store("orders",orders);
+  resetRotation(); renderModes(); draw(); renderList(); renderRecent(); updateClock();
+  if(clearResult && shown && !current.includes(shown)) showEmpty();
+}
+
+/* ---------- wiring ---------- */
+document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{
+  lang=b.dataset.lang; try{ localStorage.setItem("hnag2-lang",lang); }catch(e){}
+  applyLang(); refresh(false); if(shown) show(shown); else showEmpty();
+});
+document.getElementById("spin").onclick=spin;
+document.getElementById("openOnly").onchange=()=>refresh();
+document.getElementById("cool").onchange=e=>{ coolDays=Number(e.target.value); store("cool",coolDays); };
+document.getElementById("addBtn").onclick=()=>{
+  const inp=document.getElementById("newItem"), v=inp.value.trim(); if(!v) return;
+  custom.push({id:"c"+Date.now(),label:v}); store("custom",custom); inp.value=""; refresh();
+};
+document.getElementById("newItem").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("addBtn").click(); });
+window.addEventListener("resize",()=>{ if(!spinning) draw(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>draw());
+let lastMode=autoMode();
+setInterval(()=>{ if(spinning) return; const a=autoMode(); if(a!==lastMode){ lastMode=a; refresh(); } else updateClock(); },60000);
+applyLang(); showEmpty();
+(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>refresh());
+</script>
+</body>
+</html>
